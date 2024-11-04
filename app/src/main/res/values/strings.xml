@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Objet Connecté</string>
+    <string name= "lblBienvenu">Bienvenue Dans lapplication</string>
+    <string name="lblIP">IP : </string>
+    <string name="lblPort">Port : </string>
+    <string name="lblMarche"> Marche : </string>
+    <string name ="lblFreq"> Frequence : </string>
+    <string name="lblPour">Pourcentage : </string>
+    <string name= "btnGet">Requeste Get</string>
+    <string name = "btnPost">Requeste Post</string>
+
+</resources>
