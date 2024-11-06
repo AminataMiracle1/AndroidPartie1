@@ -5,11 +5,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.EditText
 import android.widget.TextView
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.work.OneTimeWorkRequest
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
@@ -18,7 +16,9 @@ import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+
 
 class MainActivity : AppCompatActivity() {
     val handler = Handler(Looper.getMainLooper())
@@ -46,13 +46,7 @@ class MainActivity : AppCompatActivity() {
         // Lancer la commande au worker pour qu'il l'éxecute
         WorkManager.getInstance(this).enqueue(request)
         // TODO: Get les données de l'objet
-        // Appller la fonction getData
-         val reponse = getData("http://localhost")
-        if (reponse != null){
-            Log.d("Mon_get", reponse)
-        }else{
-            Log.d("Mon_get", "null")
-        }
+
 
     }
 
@@ -60,16 +54,46 @@ class MainActivity : AppCompatActivity() {
         val thread = Thread{
             // TODO : code a exuter  en asynchrone
             Log.i("monthread" , "Affiche d'un log asynchrone")
+            // Appller la fonction getData
 
-            // le handler permet à notre thread asynchrone de communication avec
-            // le thread principale pour lui permettre de mettre à jour l'affichage
+            val jsonData = getData("https://api.jsonbin.io/v3/qs/672bc3c1ad19ca34f8c5747b")
+            Log.d("JsonData", jsonData ?: "Donnée nulles")
+            // Poster l'opération de mise à jour sur le thread principale.
             handler.post{
-                // TODO: Mettre a jour l'interface utilisteur
-                val txtSortie = findViewById<TextView>(R.id.LbTextBIenvenue)
-                txtSortie.text = "Nouvelle donnée obtenues"
+                // Convertir la réponse en objet JSON
+                val obj = JSONObject(jsonData)
+                try {
+                    // Afficher la chaine dans un log pour connaitre la structure
+                    Log.d("JsonData", jsonData ?: "Donnée nulles")
+                    // Extraire les données de la chaines JSON et les afficher
+                    if (jsonData != null){
+                        // méthode pour avoir un fichier json.
+                        val record = obj.getJSONObject("record") // accéder à l'objet recorde
+                        val ip = record.getString( "IP")
+                        val port = record.getInt("Post")
+                        Log.d("Donnes", "nulle ${port}")
+                     //   val marche = obj.getBoolean("marche")
+                        val freq = record.getInt("freq")
+                        Log.d("Donnes", "nulle ${freq}")
+                        val pourc = record.getInt("pourc")
+                        Log.d("Donnes", "nulle ${pourc}")
+                        // Maintenant mettre à les textEdit
+                        val champIP : EditText = findViewById(R.id.editTextIP)
+                        val champPort : EditText = findViewById(R.id.editTextPort)
+                        val champMarch : EditText = findViewById(R.id.editMarche)
+                        val champFre : EditText = findViewById(R.id.editFreq)
+                        val champPourc : EditText = findViewById(R.id.editPour)
+                        champIP.setText(ip)
+                        champPort.setText(port.toString())
+                      //  champMarch.setText(marche) marche pas à cause du booleen
+                        champFre.setText(freq.toString())
+                        champPourc.setText(pourc.toString())
+                    }
+                }catch (e: Exception){
+                    e.printStackTrace()
+                }
             }
         }
-
         thread.start()
     }
 
