@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -17,6 +18,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONObject
+import java.io.DataOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.concurrent.TimeUnit
 
 
@@ -26,16 +30,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) // afficher le layout
 
+        getDatServerGet()
+
         // Appeler le thread
-        exceuterAsynchrone()
+        //exceuterAsynchrone()
         // TODO : Créer une requette pour excutter la tache une seule fois
 
         // TODO:
+        /*
         // Créer une requeste pour executer une seule fois
         val myWorkRequest = OneTimeWorkRequest.Builder(MyWorker::class.java).build()
 
-        // planifier la tache avec WorkManager
-        WorkManager.getInstance(this).enqueue(myWorkRequest)
+         //planifier la tache avec WorkManager
+       WorkManager.getInstance(this).enqueue(myWorkRequest)
 
         // Préparer la requete au worker
         val request = PeriodicWorkRequest.Builder(
@@ -46,10 +53,27 @@ class MainActivity : AppCompatActivity() {
         // Lancer la commande au worker pour qu'il l'éxecute
         WorkManager.getInstance(this).enqueue(request)
         // TODO: Get les données de l'objet
+         */
+
+
+      /*  // Gestion d'un bouton
+        val btnPost = findViewById<Button>(R.id.btnEnvPost)
+        btnPost.setOnClickListener {
+            // Créer un nouveau thread pour exceuter la requeste POSt
+            val thread = Thread{
+                sendPost("http://10.4.129.42:8080" , "{\"commande\":1}")
+            }
+            // Demarer le thread
+            thread.start()
+        }
+        // methode qui nous permet de recevoir le fichier Json de mon raspberry by
+        getDatServerGet()
+        */
+
 
 
     }
-
+    // Cette méthode est pour recevoir un fichier JSon
     private fun exceuterAsynchrone(){
         val thread = Thread{
             // TODO : code a exuter  en asynchrone
@@ -96,8 +120,56 @@ class MainActivity : AppCompatActivity() {
         }
         thread.start()
     }
+    /*
+    Méthode qui va demande le Ip et port de getDatServerGet
+     */
+    private fun getDatServerGet(){
 
-    // Partie Htt
+            val btnGet = findViewById<Button>(R.id.btnEnvoyerGet)
+            try {
+                // Appeler la fonction getData qui nous retourne la reponse du server
+                btnGet.setOnClickListener {
+                    // Recupere le contenus des champs
+                    val ip = findViewById<EditText>(R.id.editTextIP).text.toString()
+                    val port = findViewById<EditText>(R.id.editTextPort).text
+
+                    // Le lien de connection
+                    val stUrl = "http://${ip}:${port}"
+                    Log.d("SetUrl", stUrl)
+                    val thread = Thread{
+                        val reponseServer = getData(stUrl)
+                        // afficher la valeurs des capteurs
+                        Log.d("ServeurGet", reponseServer.toString())
+
+                        handler.post {
+                            // Convertir le fichier recu en json
+                            val objet = JSONObject(reponseServer)
+
+                            val capteur3 =  objet.getJSONObject("capteur3")
+                            val capteur5 = objet.getJSONObject("capteur5")
+                            // Recupere les widget pour afficher :
+                            findViewById<EditText>(R.id.editMarche).setText(capteur3.toString())
+                            findViewById<EditText>(R.id.editFreq).setText(capteur5.toString())
+                        }
+
+
+                    }
+                    thread.start()
+
+
+                    //TODO : recupere le fichier Json et Afficher sur les edit text
+                }
+            }catch (e:Exception) {
+                e.printStackTrace()
+                Log.e("ERREUR", e.toString())
+            }
+
+
+    }
+
+    /*
+    Méthode pour obtemir des données d'un server ou d'un objet connecté avec Get
+    */
     private fun getData(stUrl: String): String? {
         val client = OkHttpClient()
         val request = Request.Builder()
@@ -109,7 +181,7 @@ class MainActivity : AppCompatActivity() {
                     Log.e("ERREUR", "Erreur de connexion : ${response.code}")
                     null
                 }else{
-                    response.body?.string() // Renvoie le corps de la reonse en tant que chaine
+                    response.body?.string() // Renvoie le corps de la reponse en tant que chaine
                 }
 
             }
@@ -117,6 +189,36 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
             Log.e("ERREUR", e.toString())
             null
+        }
+    }
+
+    /**
+     * Méthode pour envoyer une commande json a un objet connect. à l'aide d'une requete POST
+     * @param stUrl Address Url du serveur ou de notre objet connecté
+     * @param jsonMsg Le message Json qui sera envoyé à l'objet connecté Password1
+     */
+
+    private fun sendPost(stUrl: String, jsonMsg: String){
+        try{
+            // Etablir la connexion a l'url et envoyer notre commande json dans une requete post
+            val url = URL(stUrl)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8" )
+            conn.setRequestProperty("Accept", "application/json")
+            conn.doOutput = true
+            conn.doOutput = true
+            DataOutputStream(conn.outputStream).use { os ->
+                os.writeBytes(jsonMsg)
+                os.flush()
+            }
+            // On peut afficher la réponse du server dans un log pour s'assurer du fonctionnement
+            Log.d("Status", conn.responseCode.toString())
+            Log.d("MSG", conn.responseMessage)
+            conn.disconnect()
+        }catch (e: Exception){
+            e.printStackTrace()
+            Log.e("Erreur", e.message ?: "Erreur inconnue")
         }
     }
 }
