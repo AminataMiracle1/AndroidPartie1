@@ -1,6 +1,10 @@
 package com.example.objetconnect
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -9,6 +13,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
@@ -27,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) // afficher le layout
+
+        //canalNotification()
 
         getDatServerGet()
 
@@ -63,7 +70,60 @@ class MainActivity : AppCompatActivity() {
         }*/
         getDatServerPost()
 
+
+
     }
+    //TODO Résumé des étapes principales pour utiliser les notifications en Kotlin :
+    //Crée un canal de notification pour les appareils Android 8.0+.
+    //Utilise NotificationCompat.Builder pour construire une notification avec un titre, un texte, une icône et des actions.
+    //Envoie la notification via le NotificationManager.
+    //Pour gérer les actions de la notification, crée des PendingIntent pour les boutons et les interactions utilisateur.
+    //Pour envoyer des notifications push, utilise Firebase Cloud Messaging et un service pour gérer la réception des messages.
+
+    /*
+    Créer une fonction qui créer la canal de notification
+     */
+    private fun canalNotification(){
+        val channelId = "my_channel_id"
+        val channelName = "My Channel"
+
+        // Créer le canal de notification pour Android 8.0 et plus
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val notificationChannel = NotificationChannel(channelId, channelName, importance).apply {
+                description = "This is my channel"
+            }
+
+            // Enregistrer le canal de notification
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(notificationChannel)
+        }
+        //Créer la notification
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
+            //.setSmallIcon(R.drawable.ic_notification) // Icône de la notification
+            .setContentTitle("Nouvelle Notification") // Titre de la notification
+            .setContentText("Vous avez un nouveau message.") // Texte de la notification
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT) // Priorité
+            .setAutoCancel(true) // La notification disparaît lorsqu'on clique dessus
+            .setDefaults(NotificationCompat.DEFAULT_SOUND) // Son par défaut pour la notification
+
+        // Si tu veux ajouter une action à la notification, par exemple un bouton
+       /* val pendingIntent = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT
+        )*/
+
+        //notificationBuilder.addAction(R.drawable.ic_action_name, "Ouvrir", pendingIntent)
+
+        // Obtenir le NotificationManager et envoyer la notification
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(0, notificationBuilder.build()) // 0 est l'ID de la notification
+
+        // afficher la notification
+        val notificationId = 1 // ID unique pour cette notification
+        notificationManager.notify(notificationId, notificationBuilder.build())
+    }
+
     private fun getDatServerPost(){
         // Gestion d'un bouton
         val btnPost = findViewById<Button>(R.id.btnEnvPost)
