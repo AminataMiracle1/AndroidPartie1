@@ -37,8 +37,9 @@ android {
 
 dependencies {
     // Dépendance pour WorkManager
-    implementation(libs.androidx.work.runtime.ktx)
-
+    implementation(libs.androidx.work.runtime.ktx);
+    // pour un fichier json
+    implementation (libs.gson)
     // Dépendance pour OkHttp
     implementation(libs.okhttp)
     implementation(libs.androidx.core.ktx)
