@@ -2,8 +2,8 @@ package com.example.objetconnect
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -12,8 +12,16 @@ import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.PermissionChecker
+import androidx.work.OneTimeWorkRequest
+import androidx.work.PeriodicWorkRequest
+import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
@@ -24,8 +32,10 @@ import java.io.DataOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import com.google.gson.Gson
+import java.util.concurrent.TimeUnit
 
 
+val channelId = "my_channel_id"
 
 class MainActivity : AppCompatActivity() {
     val handler = Handler(Looper.getMainLooper())
@@ -33,22 +43,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) // afficher le layout
 
-        //canalNotification()
+        // Initialisation des notification
+        creerCanal()
+        demanderPermissionNotification()
 
         getDatServerGet()
-
-
 
         // Appeler le thread
         //exceuterAsynchrone()
         // TODO : Créer une requette pour excutter la tache une seule fois
-
-        // TODO:
-        /*
-        // Créer une requeste pour executer une seule fois
+        //Créer une requeste pour executer une seule fois
         val myWorkRequest = OneTimeWorkRequest.Builder(MyWorker::class.java).build()
          //planifier la tache avec WorkManager
-       WorkManager.getInstance(this).enqueue(myWorkRequest)
+        WorkManager.getInstance(this).enqueue(myWorkRequest)
         // Préparer la requete au worker
         val request = PeriodicWorkRequest.Builder(
             MyWorker::class.java,
@@ -56,8 +63,10 @@ class MainActivity : AppCompatActivity() {
         ).build()
         // Lancer la commande au worker pour qu'il l'éxecute
         WorkManager.getInstance(this).enqueue(request)
+
+
         // TODO: Get les données de l'objet
-         */
+
 /*        // Gestion d'un bouton
         val btnPost = findViewById<Button>(R.id.btnEnvPost)
         btnPost.setOnClickListener {
@@ -83,45 +92,38 @@ class MainActivity : AppCompatActivity() {
     /*
     Créer une fonction qui créer la canal de notification
      */
-    private fun canalNotification(){
-        val channelId = "my_channel_id"
+    private fun creerCanal(){
         val channelName = "My Channel"
-
+        val channelDescription = "canal de notification "
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
         // Créer le canal de notification pour Android 8.0 et plus
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
             val notificationChannel = NotificationChannel(channelId, channelName, importance).apply {
-                description = "This is my channel"
+                description = channelDescription
             }
-
             // Enregistrer le canal de notification
-            val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notificationManager: NotificationManager = applicationContext.getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(notificationChannel)
         }
-        //Créer la notification
-        val notificationBuilder = NotificationCompat.Builder(this, channelId)
-            //.setSmallIcon(R.drawable.ic_notification) // Icône de la notification
-            .setContentTitle("Nouvelle Notification") // Titre de la notification
-            .setContentText("Vous avez un nouveau message.") // Texte de la notification
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT) // Priorité
-            .setAutoCancel(true) // La notification disparaît lorsqu'on clique dessus
-            .setDefaults(NotificationCompat.DEFAULT_SOUND) // Son par défaut pour la notification
+    }
+    /**
+     * Méthode pour demander la permission d'envoyer des notifiacation
+     * nécessaire a partir de l'API 33
+     */
+    private fun demanderPermissionNotification(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ){
+            // Lanceur pour demander la perission pour les notifications
+            val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()){ result ->
+                if (!result){
+                    Toast.makeText(this, "la permission n'a pas été accordée", Toast.LENGTH_SHORT).show()
+                }
+                }
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PermissionChecker.PERMISSION_GRANTED){
+                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
 
-        // Si tu veux ajouter une action à la notification, par exemple un bouton
-       /* val pendingIntent = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT
-        )*/
+        }
 
-        //notificationBuilder.addAction(R.drawable.ic_action_name, "Ouvrir", pendingIntent)
-
-        // Obtenir le NotificationManager et envoyer la notification
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(0, notificationBuilder.build()) // 0 est l'ID de la notification
-
-        // afficher la notification
-        val notificationId = 1 // ID unique pour cette notification
-        notificationManager.notify(notificationId, notificationBuilder.build())
     }
 
     private fun getDatServerPost(){
@@ -137,7 +139,6 @@ class MainActivity : AppCompatActivity() {
             val marche = findViewById<EditText>(R.id.editMarche).text.toString()
             val freq = findViewById<EditText>(R.id.editFreq).text.toString().toInt() // convertir en int
             val pour = findViewById<EditText>(R.id.editPour).text.toString().toInt() // converir en Int
-
             //Créer un fichier Json a envoyer : Note on doit creer un data class pour faire un json
             val myData = MyData(freq, pour, marche)
             // Utiliser Gson pour convertir cet objet en chaîne JSON
@@ -155,7 +156,6 @@ class MainActivity : AppCompatActivity() {
             thread.start()
         }
     }
-
     // Cette méthode est pour recevoir un fichier JSon
     private fun exceuterAsynchrone(){
         val thread = Thread{
@@ -263,13 +263,11 @@ class MainActivity : AppCompatActivity() {
             null
         }
     }
-
     /**
      * Méthode pour envoyer une commande json a un objet connect. à l'aide d'une requete POST
      * @param stUrl Address Url du serveur ou de notre objet connecté
      * @param jsonMsg Le message Json qui sera envoyé à l'objet connecté Password1
      */
-
     private fun sendPost(stUrl: String, jsonMsg: String): String? {
         try {
             // Établir la connexion à l'URL et envoyer la commande JSON dans une requête POST
@@ -317,18 +315,40 @@ class MainActivity : AppCompatActivity() {
             return null
         }
     }
-
 }
-
 // Crééer une classe qui hérite de Worker
 class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams){
     // Rédefinir la methode doWork pour faire ce qu'on veut en arrière-plan
     override fun doWork(): Result{
         //TODO : Code à exceuter en arrière plan workerManager
         Log.i("MonWorker", "Afficher un log en arrière plan ")
+        // Variable pour la notification
+        val titre = "La notification d'Aminata"
+        val texte = "La notification se trouve dans la classe MyWorker"
+        val notID = 1
+        afficherNotification(notID,titre,texte)
 
         // indiquer si le travail c'est exceuter avec succes
         return Result.success()
+    }
+
+    private fun afficherNotification(id: Int, titre : String, texte: String){
+        // Préparer la notification, choisir ce qui y sera affiché et son niveau de priorité.
+        val builder = NotificationCompat.Builder(applicationContext, channelId)
+            .setSmallIcon(android.R.drawable.star_on) // Icône de la notification
+            .setContentTitle(titre) // Titre de la notification
+            .setContentText(texte) // Texte de la notification
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT) // Priorité
+           // .setAutoCancel(true) // La notification disparaît lorsqu'on clique dessus
+            .setDefaults(NotificationCompat.DEFAULT_SOUND) // Son par défaut pour la notification
+
+        // Afficher la notification
+        with(NotificationManagerCompat.from(applicationContext)){
+            // vérification de la permission à ce moment la
+            if(ActivityCompat.checkSelfPermission(applicationContext, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED){
+                notify(id, builder.build())
+            }
+        }
     }
 }
 // Définir une classe représentant les données que tu veux envoyer
